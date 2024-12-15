@@ -14,7 +14,7 @@ size [1-9][0-9]*
 
 %%
 
-"int" { std::cout << "Found token: INT\n"; return INT; }
+"int" { return INT; }
 "float" { return FLOAT; }
 "class" { return CLASS; }
 "if" { return IF; }
@@ -26,6 +26,8 @@ size [1-9][0-9]*
 "TypeOf" { return TYPEOF; }
 "begin" { return START; }  // Keep this if you need it
 "end" { return STOP; }    // Keep this if you need it
+"main" { return MAIN; }
+"print" { return PRINT; }
 
 (-?[1-9][0-9]*)|0 { 
     yylval.int_nr = atoi(yytext); 
@@ -38,7 +40,6 @@ size [1-9][0-9]*
 }
 
 {identifier}"["{size}"]""["{size}"]" {
-    std::cout << "Found token: MATRIX\n";
     char id[256];
     sscanf(yytext, "%s[%d][%d]", id, &yylval.rows, &yylval.cols);
     yylval.name = new std::string(id);  // Folosește std::string în loc de strdup
@@ -46,7 +47,6 @@ size [1-9][0-9]*
 }
 
 {identifier}"["{size}"]" {
-    std::cout << "Found token: ARRAY\n";
     char id[256];
     sscanf(yytext, "%s[%d]", id, &yylval.dim);
     yylval.name = new std::string(id);  // Folosește std::string în loc de strdup
@@ -54,7 +54,6 @@ size [1-9][0-9]*
 }
 
 {identifier} { 
-    std::cout << "Found token: IDENTIFIER\n";
     yylval.name = new std::string(yytext);  // Folosește std::string în loc de strdup
     return IDENTIFIER; 
 }

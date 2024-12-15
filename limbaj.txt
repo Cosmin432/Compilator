@@ -1,0 +1,22 @@
+class integer { 
+    int x;
+    float mat[50][50];
+}
+class animal {
+    int age;
+    float speed;
+}
+int x = 2;
+void main()
+{
+    int y = 6;
+    y = 7;
+    print 4 > 3;
+    while x > y || ! x == 2:
+    begin
+        y = x;
+        x = x * x;
+        print 5;
+        print 5 * 5 >= 30 - 5;
+    end
+}
