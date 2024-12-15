@@ -102,7 +102,7 @@ global_variables:
 
 function_definition:
     type IDENTIFIER LPAREN parameters RPAREN LBRACE statements RBRACE { 
-        if (current_section != FUNCTIONS) {
+        if (current_section != FUNCTIONS && current_section != GLOBAL_VARS) {
             yyerror("Functions must be declared after global variables.");
             YYABORT;
         }
