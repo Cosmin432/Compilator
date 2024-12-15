@@ -1,8 +1,9 @@
 %{
+    #include <iostream>
+    #include <string>  // pentru funcții de manipulare a șirurilor
     #include "tema.tab.h"
-    #include <stdio.h>
-    #include <string.h>
     void yyerror(const char *s);
+    extern FILE *yyin;
 %}
 
 %option noyywrap
@@ -13,8 +14,7 @@ size [1-9][0-9]*
 
 %%
 
-
-"int" { printf("Found token: INT\n"); return INT; }
+"int" { std::cout << "Found token: INT\n"; return INT; }
 "float" { return FLOAT; }
 "class" { return CLASS; }
 "if" { return IF; }
@@ -38,24 +38,24 @@ size [1-9][0-9]*
 }
 
 {identifier}"["{size}"]""["{size}"]" {
-    printf("Found token: MATRIX\n");
+    std::cout << "Found token: MATRIX\n";
     char id[256];
     sscanf(yytext, "%s[%d][%d]", id, &yylval.rows, &yylval.cols);
-    yylval.name = strdup(id);
+    yylval.name = new std::string(id);  // Folosește std::string în loc de strdup
     return MATRIX;
 }
 
 {identifier}"["{size}"]" {
-    printf("Found token: ARRAY\n");
+    std::cout << "Found token: ARRAY\n";
     char id[256];
     sscanf(yytext, "%s[%d]", id, &yylval.dim);
-    yylval.name = strdup(id);
+    yylval.name = new std::string(id);  // Folosește std::string în loc de strdup
     return ARRAY;
 }
 
 {identifier} { 
-    printf("Found token: IDENTIFIER\n");
-    yylval.name = strdup(yytext); 
+    std::cout << "Found token: IDENTIFIER\n";
+    yylval.name = new std::string(yytext);  // Folosește std::string în loc de strdup
     return IDENTIFIER; 
 }
 
@@ -90,6 +90,5 @@ size [1-9][0-9]*
 \n { yylineno++; }
 
 . { yyerror("Invalid character"); }
-
 
 %%
