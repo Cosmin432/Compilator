@@ -5,18 +5,50 @@ class integer {
 class animal {
     int age;
     float speed;
+    int fast()
+    {
+        print(speed);
+    }
 }
 int x = 2;
+float x[10][10];
+char x;
+int functie(int x, animal a, float m[10][20])
+{
+    int x;
+    print (200);
+}
 void main()
 {
     int y = 6;
     y = 7;
-    print 4 > 3;
-    while x > y || ! x == 2:
+    string str = "text%";
+    bool ok = 0;
+    char i = '.';
+    print ('?');
+    char c;
+    print (4 > 3);
+    print (ok);
+    animal a;
+    a.age = 10;
+    print (a.fast());
+    typeof (x);
+    functie(5, a, 10/2 + 5, fct());
+    while x > y || ! x == 2 && x + 2 < y + 6:
     begin
         y = x;
         x = x * x;
-        print 5;
-        print 5 * 5 >= 30 - 5;
+        print (5);
+        print (5 * 5 >= 30 - 5);
+        typeof (5 * 5 >= 30 - 5);
+    end
+    print (20 * 5 + 12 / 5);
+    for x = 1 ; x < 10 ; x = x + 1
+    begin
+        print (x);
+    end
+    if x < 2:
+    begin
+        x = 7;
     end
 }

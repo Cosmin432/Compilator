@@ -16,10 +16,14 @@ size [1-9][0-9]*
 
 "int" { return INT; }
 "float" { return FLOAT; }
+"bool" { return BOOL; }
+"char" { return CHAR; }
+"string" { return STRING; }
 "class" { return CLASS; }
 "if" { return IF; }
 "else" { return ELSE; }
 "while" { return WHILE; }
+"for" { return FOR; }
 "void" { return VOID; }
 "true" { return TRUE; }
 "false" { return FALSE; }
@@ -28,6 +32,17 @@ size [1-9][0-9]*
 "end" { return STOP; }    // Keep this if you need it
 "main" { return MAIN; }
 "print" { return PRINT; }
+"typeof" { return TYPEOF; }
+
+\"[^\"]*\" { 
+    yylval.str_val = new std::string(yytext); 
+    return STRING_LITERAL; 
+} 
+
+\'(.)\' { 
+    yylval.char_val = yytext[1]; 
+    return CHAR_LITERAL; 
+} 
 
 (-?[1-9][0-9]*)|0 { 
     yylval.int_nr = atoi(yytext); 
@@ -83,6 +98,7 @@ size [1-9][0-9]*
 "]" { return RSQUARE; }
 ":" { return COLON; }
 "." { return POINT; }
+"," { return COMMA; }
 
 [ \t] ;  // Skip whitespace
 
