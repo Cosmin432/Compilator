@@ -1,7 +1,10 @@
 %{
     #include <iostream>
-    #include <string>  // pentru funcții de manipulare a șirurilor
+    #include <string>
     #include "tema.tab.h"
+    #include "symtable.h"  
+
+    extern SymTable* currentScope;  
     void yyerror(const char *s);
     extern FILE *yyin;
 %}
@@ -28,8 +31,8 @@ size [1-9][0-9]*
 "true" { return TRUE; }
 "false" { return FALSE; }
 "TypeOf" { return TYPEOF; }
-"begin" { return START; }  // Keep this if you need it
-"end" { return STOP; }    // Keep this if you need it
+"begin" { return START; }  
+"end" { return STOP; }    
 "main" { return MAIN; }
 "print" { return PRINT; }
 "typeof" { return TYPEOF; }
@@ -44,32 +47,23 @@ size [1-9][0-9]*
     return CHAR_LITERAL; 
 } 
 
-(-?[1-9][0-9]*)|0 { 
-    yylval.int_nr = atoi(yytext); 
-    return INT_NR; 
-}
-
 -?([1-9][0-9]*|0)\.[0-9]+ { 
     yylval.float_nr = atof(yytext); 
     return FLOAT_NR; 
 }
 
-{identifier}"["{size}"]""["{size}"]" {
-    char id[256];
-    sscanf(yytext, "%s[%d][%d]", id, &yylval.rows, &yylval.cols);
-    yylval.name = new std::string(id);  // Folosește std::string în loc de strdup
-    return MATRIX;
+(-[1-9][0-9]*)|0 { 
+    yylval.int_nr = atoi(yytext); 
+    return INT_NR_NEG; 
 }
 
-{identifier}"["{size}"]" {
-    char id[256];
-    sscanf(yytext, "%s[%d]", id, &yylval.dim);
-    yylval.name = new std::string(id);  // Folosește std::string în loc de strdup
-    return ARRAY;
+[1-9][0-9]* { 
+    yylval.int_nr = atoi(yytext); 
+    return INT_NR_POZ; 
 }
 
 {identifier} { 
-    yylval.name = new std::string(yytext);  // Folosește std::string în loc de strdup
+    yylval.name = new std::string(yytext);  
     return IDENTIFIER; 
 }
 

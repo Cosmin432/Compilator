@@ -1,18 +1,23 @@
 %{
     #include <iostream>
     #include <string>
+    #include <fstream>
+    #include <sstream>
     #include "tema.tab.h"
+    #include "symtable.h" 
 
+    extern SymTable* currentScope; 
     int yylex(void);
     void yyerror(const char *s);
     extern int yylineno;
     extern FILE* yyin;
+    std::vector<SymTable*> scope;
 
     std::string format_number(double num) {
-    if (num == (int)num) {
-        return std::to_string((int)num); 
-    }
-    return std::to_string(num); 
+        if (num == (int)num) {
+            return std::to_string((int)num); 
+        }
+        return std::to_string(num); 
     }
 
     template <typename T>
@@ -40,14 +45,13 @@
     char char_val;
 }
 
-%token <int_nr> INT_NR
+%token <int_nr> INT_NR_NEG
+%token <int_nr> INT_NR_POZ
 %token <float_nr> FLOAT_NR
 %token <str_val> STRING_LITERAL
 %token <char_val> CHAR_LITERAL
 %token <name> IDENTIFIER
-%token <dim> ARRAY
-%token <name> MATRIX
-%type <prog> program statements variable_declarations variable_declaration statement class_declaration function_definition class_declarations function_definitions main_function fuction_call class_inside class_insides
+%type <prog> program statements variable_declarations variable_declaration statement main_scope name_scope class_declaration function_definition class_declarations function_definitions main_function fuction_call class_inside class_insides parameter parameters
 %token PRINT MAIN INT FLOAT CLASS IF ELSE WHILE VOID TRUE FALSE TYPEOF START STOP
 %token FOR BOOL CHAR STRING INC DECR PLUS MINUS MULT DIV GEQ LEQ EQ NEQ ASSIGN LOW GRT NOT AND OR
 %token COMMA LPAREN RPAREN LBRACE RBRACE SEMICOLON LSQUARE RSQUARE COLON POINT
@@ -86,10 +90,22 @@ class_declarations:
     ;
 
 class_declaration:
-    CLASS IDENTIFIER LBRACE class_insides RBRACE {        
-        $$ = new std::string("Class declaration: " + *$2 + " {\n" + *$4 + "\n}"); delete $2; delete $4; }  
-    | CLASS IDENTIFIER LBRACE RBRACE {        
+    CLASS name_scope LBRACE class_insides RBRACE {   
+        currentScope = currentScope->getParent();  
+        currentScope->addClass(*$2);    
         $$ = new std::string("Class declaration: " + *$2 ); delete $2;  }  
+    | CLASS name_scope LBRACE RBRACE { 
+        currentScope = currentScope->getParent();    
+        $$ = new std::string("Class declaration: " + *$2 ); delete $2;  }  
+    ;
+name_scope:
+    IDENTIFIER {
+        auto previousScope = currentScope;
+        $$ = new std::string(*$1);
+        currentScope = new SymTable(*$$, previousScope); 
+        scope.push_back(currentScope); 
+        delete $1;   
+    }
     ;
 
 class_insides:
@@ -108,29 +124,69 @@ function_definitions:
     ;
 
 function_definition:
-    type IDENTIFIER LPAREN RPAREN LBRACE statements RBRACE { 
-        $$ = new std::string("Function declaration: " + *$2 + " {\n" + *$6 + "\n}"); delete $2; delete $6; 
+    type name_scope LPAREN RPAREN LBRACE statements RBRACE { 
+        currentScope = currentScope->getParent(); 
+        if(currentScope->getScopeName() == "global")
+            currentScope->addFunction(*$2, *$1, {}, {});
+        else
+            currentScope->addFunction(*$2, *$1, {}, currentScope->getScopeName());
+        $$ = new std::string("Function declaration: " + *$2 + " {\n" + *$6 + "\n}"); delete $2; delete $6, delete $1; 
     }
-    | type IDENTIFIER LPAREN parameters RPAREN LBRACE statements RBRACE { 
-        $$ = new std::string("Function declaration: " + *$2 + " {\n" + *$7 + "\n}"); delete $2; delete $7; 
+    | type name_scope LPAREN parameters RPAREN LBRACE statements RBRACE { 
+        std::vector<std::string> result;
+        std::stringstream ss(*$4);
+        std::string segment;
+
+        while (std::getline(ss, segment, ',')) {
+            std::stringstream wordStream(segment);
+            std::string firstWord;
+
+            wordStream >> firstWord;
+            result.push_back(firstWord);
+        }
+        currentScope = currentScope->getParent(); 
+        if(currentScope->getScopeName() == "global")
+            currentScope->addFunction(*$2, *$1, result, {});
+        else
+            currentScope->addFunction(*$2, *$1, result, currentScope->getScopeName());
+        $$ = new std::string("Function declaration: " + *$2 + " {\n" + *$7 + "\n}"); delete $2; delete $7; delete $4;
     }
     ;
+
 parameters:
     parameter
-    | parameters COMMA parameter
+    | parameters COMMA parameter { $$ = new std::string(*$1 + "," + *$3); delete $1; delete $3;}
     ;
 
 parameter:
-    type IDENTIFIER 
-    | type ARRAY
-    | type MATRIX
-    | IDENTIFIER IDENTIFIER
+    type IDENTIFIER { 
+        currentScope->addVariable(*$1, *$2, {});
+        $$ = new std::string(*$1 + " " + *$2); delete $1; delete $2; }
+    | type IDENTIFIER LSQUARE INT_NR_POZ RSQUARE { 
+        $$ = new std::string(*$1 + "[" + format_number($4) + "]");
+        currentScope->addVariable(*$$, *$2, {});
+        $$ = new std::string(*$1 + "[" + format_number($4) + "] " + *$2); delete $1; delete $2; }
+    | type IDENTIFIER LSQUARE INT_NR_POZ RSQUARE LSQUARE INT_NR_POZ RSQUARE { 
+        $$ = new std::string(*$1 + "[" + format_number($4) + "][" + format_number($7) + "]");
+        currentScope->addVariable(*$$, *$2, {});
+        $$ = new std::string(*$1 + "[" + format_number($4) + "][" + format_number($7) + "] " + *$2); delete $1; delete $2; }
+    | IDENTIFIER IDENTIFIER { 
+        currentScope->addVariable(*$1, *$2);
+        $$ = new std::string(*$1 + " " + *$2); delete $1; delete $2; }
     ;
 
 main_function:
-    VOID MAIN LPAREN RPAREN LBRACE statements RBRACE {
+    VOID main_scope LPAREN RPAREN LBRACE statements RBRACE {
         $$ = new std::string("Main function {\n" + *$6 + "\n}");
         delete $6;
+    }
+    ;
+
+main_scope:
+    MAIN {
+        auto previousScope = currentScope;
+        currentScope = new SymTable("main", previousScope); 
+        scope.push_back(currentScope); 
     }
     ;
 
@@ -145,11 +201,26 @@ variable_declarations:
     ;
 
 variable_declaration:
-    type IDENTIFIER SEMICOLON { $$ = new std::string("Declaration: " + *$1 + " " + *$2 + ";"); delete $1; delete $2; }
-    | type ARRAY SEMICOLON { $$ = new std::string("Declaration: array of type " + *$1 + ";"); delete $1; }
-    | type MATRIX SEMICOLON { $$ = new std::string("Declaration: matrix of type " + *$1 + ";"); delete $1; }
-    | type IDENTIFIER ASSIGN expression SEMICOLON { $$ = new std::string("Declaration: " + *$1 + " " + *$2 + " = " + format_number($4) + ";"); delete $1; delete $2; }
-    | IDENTIFIER IDENTIFIER SEMICOLON { $$ = new std::string("Declaration: " + *$1 + " " + *$2 + ";"); delete $1; delete $2; }
+    type IDENTIFIER SEMICOLON { 
+        currentScope->addVariable(*$1, *$2, {});
+        $$ = new std::string("Declaration: " + *$1 + " " + *$2 + ";"); delete $1; delete $2; }
+    | type IDENTIFIER LSQUARE INT_NR_POZ RSQUARE SEMICOLON { 
+        $$ = new std::string(*$1 + "[" + format_number($4) + "]");
+        currentScope->addVariable(*$$, *$2, {});
+        delete $1; delete $2; }
+    | type IDENTIFIER LSQUARE INT_NR_POZ RSQUARE LSQUARE INT_NR_POZ RSQUARE SEMICOLON {
+        $$ = new std::string(*$1 + "[" + format_number($4) + "][" + format_number($7) + "]");
+        currentScope->addVariable(*$$, *$2, {});
+        delete $1; delete $2; }
+    | type IDENTIFIER ASSIGN expression SEMICOLON { 
+        currentScope->addVariable(*$1, *$2, format_number($4));
+        $$ = new std::string("Declaration: " + *$1 + " " + *$2 + " = " + format_number($4) + ";"); delete $1; delete $2; }
+    | type IDENTIFIER ASSIGN STRING_LITERAL SEMICOLON { 
+        currentScope->addVariable(*$1, *$2, *$4);
+        $$ = new std::string("Declaration: " + *$1 + " " + *$2 + " = " + *$4 + ";"); delete $1; delete $2; delete $4;}
+    | IDENTIFIER IDENTIFIER SEMICOLON { 
+        currentScope->addVariable(*$1, *$2);
+        $$ = new std::string("Declaration: " + *$1 + " " + *$2 + ";"); delete $1; delete $2; }
     ;
 
 fuction_call:
@@ -159,26 +230,43 @@ fuction_call:
     ;
 
 statement:
-    IF boolean COLON START statements STOP { $$ = new std::string("if (" + std::string($2 ? "true" : "false") + ") {\n" + *$5 + "\n}"); delete $5; }
-    | WHILE boolean COLON START statements STOP { $$ = new std::string("while (" + std::string($2 ? "true" : "false") + ") {\n" + *$5 + "\n}"); delete $5; }
-    | FOR IDENTIFIER ASSIGN expression SEMICOLON boolean SEMICOLON IDENTIFIER ASSIGN expression START statements STOP { $$ = new std::string("for (" + *$2 + " = " + format_number($4) + "; " + std::string($6 ? "true" : "false") + "; " + *$8 + " = " + format_number($10) + ") {\n" + *$12 + "\n}"); delete $12; }
+    IF boolean COLON block_scope statements STOP { 
+        currentScope = currentScope->getParent();  
+        $$ = new std::string("if (" + std::string($2 ? "true" : "false") + ") {\n" + *$5 + "\n}"); delete $5; }
+    | WHILE boolean COLON block_scope statements STOP { 
+        currentScope = currentScope->getParent();  
+        $$ = new std::string("while (" + std::string($2 ? "true" : "false") + ") {\n" + *$5 + "\n}"); delete $5; }
+    | FOR IDENTIFIER ASSIGN expression SEMICOLON boolean SEMICOLON IDENTIFIER ASSIGN expression block_scope statements STOP { 
+        currentScope = currentScope->getParent();  
+        $$ = new std::string("for (" + *$2 + " = " + format_number($4) + "; " + std::string($6 ? "true" : "false") + "; " + *$8 + " = " + format_number($10) + ") {\n" + *$12 + "\n}"); delete $12; }
     | IDENTIFIER ASSIGN expression SEMICOLON { $$ = new std::string("Assignment: " + *$1 + " = " + format_number($3)); delete $1; }
+    | IDENTIFIER ASSIGN STRING_LITERAL SEMICOLON { $$ = new std::string("Assignment: " + *$1 + " = " + *$3); delete $1; delete $3;}
     | PRINT LPAREN expression RPAREN SEMICOLON { 
         print($3); 
         $$ = new std::string("print(" + format_number($3) + ");");
+    }    
+    | PRINT LPAREN STRING_LITERAL RPAREN SEMICOLON { 
+        print(*$3); 
+        $$ = new std::string("print(" + *$3 + ");");
+        delete $3;
     }    
     | PRINT LPAREN boolean RPAREN SEMICOLON { 
         print($3); 
         $$ = new std::string("print(" + format_number($3) + ");");
     }    
     | PRINT LPAREN fuction_call RPAREN SEMICOLON { 
-        print($3); 
+        print(*$3); 
         $$ = new std::string("print(" + *$3 + ");");
         delete $3;
     }
     | TYPEOF LPAREN expression RPAREN SEMICOLON {
         print("expression");
         $$ = new std::string("typeof(" + format_number($3) + ");");
+    }    
+    | TYPEOF LPAREN STRING_LITERAL RPAREN SEMICOLON {
+        print("string");
+        $$ = new std::string("typeof(" + *$3 + ");");
+        delete $3;
     }
     | TYPEOF LPAREN boolean RPAREN SEMICOLON {
         print("bool");
@@ -187,6 +275,15 @@ statement:
     | variable_declaration { $$ = $1; }
     | fuction_call SEMICOLON { $$ = $1; }
     | IDENTIFIER POINT IDENTIFIER ASSIGN expression SEMICOLON { $$ = new std::string("Assignment: " + *$3 + " = " + format_number($5)); delete $3; }
+    | IDENTIFIER POINT IDENTIFIER ASSIGN STRING_LITERAL SEMICOLON { $$ = new std::string("Assignment: " + *$3 + " = " + *$5); delete $3; delete $5;}
+    ;
+
+block_scope:
+    START {
+        auto previousScope = currentScope;
+        currentScope = new SymTable("block", previousScope); 
+        scope.push_back(currentScope); 
+    }
     ;
 
 parameters_call:
@@ -197,6 +294,7 @@ parameters_call:
 parameter_call:
     expression
     | fuction_call
+    | STRING_LITERAL
     ;
 
 type:
@@ -208,13 +306,14 @@ type:
     ;
 
 expression:
-    INT_NR { $$ = (double) $1; }
+    INT_NR_NEG { $$ = (double) $1; }
+    | INT_NR_POZ { $$ = (double) $1; }
     | FLOAT_NR { $$ = (double) $1; }
-    | STRING_LITERAL { $$ = 0; }
     | CHAR_LITERAL { $$ = (double) $1; }
     | IDENTIFIER { $$ = 0; }
-    | IDENTIFIER LSQUARE INT_NR RSQUARE { $$ = 0;  }
-    | IDENTIFIER LSQUARE INT_NR RSQUARE LSQUARE INT_NR RSQUARE { $$ = 0;}
+    | IDENTIFIER LSQUARE INT_NR_POZ RSQUARE { $$ = 0;  }
+    | IDENTIFIER LSQUARE INT_NR_POZ RSQUARE LSQUARE INT_NR_POZ RSQUARE { $$ = 0;}
+    | IDENTIFIER POINT IDENTIFIER { $$ = 0; }
     | expression PLUS expression { $$ = $1 + $3; }
     | expression MINUS expression { $$ = $1 - $3; }
     | expression MULT expression { $$ = $1 * $3; }
@@ -245,6 +344,13 @@ void yyerror(const char *s) {
 int main(int argc, char** argv)
 {
     yyin = fopen(argv[1], "r");
+    currentScope = new SymTable("global", {}); 
+    scope.push_back(currentScope);
     yyparse();
+    std::ofstream outFile("symtable.txt");
+    for(const auto& current : scope)
+        if(current->getScopeName() != "block")
+            current->print(outFile);
+    outFile.close();
     return 0;
 }

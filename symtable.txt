@@ -1,0 +1,62 @@
+Scope: global
+----------------------------------------
+Variables:
+              int               x = 2
+          int[10]               v
+Functions:
+              int         functie(int, animal, float[10], bool[5][5])
+Classes:
+  integer
+  animal
+----------------------------------------
+
+
+Scope: integer
+----------------------------------------
+Variables:
+    float[50][50]             mat
+              int               y
+----------------------------------------
+
+
+Scope: animal
+----------------------------------------
+Variables:
+              int             age
+            float           speed
+Functions:
+              int            fast(int)
+----------------------------------------
+
+
+Scope: fast
+----------------------------------------
+Variables:
+              int           speed
+----------------------------------------
+
+
+Scope: functie
+----------------------------------------
+Variables:
+              int               x
+           animal               a
+        float[10]               m
+       bool[5][5]               b
+              int               i
+----------------------------------------
+
+
+Scope: main
+----------------------------------------
+Variables:
+              int               y = 6
+            float              fl = 3.240000
+           string             str = "text%"
+             bool              ok = 0
+             char               i = 46
+             char               c
+           animal               a
+----------------------------------------
+
+

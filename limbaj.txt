@@ -1,27 +1,27 @@
 class integer { 
-    int x;
     float mat[50][50];
+    int y;
 }
 class animal {
     int age;
     float speed;
-    int fast()
+    int fast(int speed)
     {
         print(speed);
     }
 }
 int x = 2;
-float x[10][10];
-char x;
-int functie(int x, animal a, float m[10][20])
+int v[10];
+int functie(int x, animal a, float m[10], bool b[5][5])
 {
-    int x;
-    print (200);
+    int i;
+    print ("in functie");
 }
 void main()
 {
     int y = 6;
     y = 7;
+    float fl = 3.24;
     string str = "text%";
     bool ok = 0;
     char i = '.';
@@ -33,9 +33,11 @@ void main()
     a.age = 10;
     print (a.fast());
     typeof (x);
-    functie(5, a, 10/2 + 5, fct());
+    functie(5, a, 10/2 + 5, fct(), m[20][20], "param");
+    fct(a.age);
     while x > y || ! x == 2 && x + 2 < y + 6:
     begin
+        int z = x;
         y = x;
         x = x * x;
         print (5);
@@ -45,10 +47,11 @@ void main()
     print (20 * 5 + 12 / 5);
     for x = 1 ; x < 10 ; x = x + 1
     begin
+        char a = '1';
         print (x);
     end
     if x < 2:
     begin
-        x = 7;
+        int y = 7;
     end
 }
