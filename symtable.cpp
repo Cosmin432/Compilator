@@ -75,3 +75,27 @@ void SymTable::print(std::ostream& out) const {
     out << std::string(40, '-') << "\n" << "\n";
     out << "\n";
 }
+
+bool SymTable::findVariable(const std::string& name) const {
+    for (const auto& var : variables) {
+        if (var.name == name) {
+            return true;
+        }
+    }
+    if (parent) {
+        return parent->findVariable(name); 
+    }
+    return false;
+}
+    bool SymTable::findFunction(const std::string& name) const {
+    // Căutăm funcția în lista de funcții din scopul curent
+    for (const auto& func : functions) {
+        if (func.name == name) {
+            return true; // Funcția a fost găsită
+        }
+    }
+
+    return false; // Funcția nu a fost găsită în niciun scop
+}
+
+

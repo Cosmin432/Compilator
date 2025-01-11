@@ -224,9 +224,37 @@ variable_declaration:
     ;
 
 fuction_call:
-    IDENTIFIER LPAREN parameters_call RPAREN  { $$ = new std::string(*$1); delete $1; }
-    | IDENTIFIER LPAREN RPAREN { $$ = new std::string(*$1); delete $1; }
-    | IDENTIFIER POINT fuction_call { $$ = new std::string(*$3); delete $3; }
+    IDENTIFIER LPAREN parameters_call RPAREN { 
+        auto previousScope = currentScope;
+        currentScope = scope[0];
+        if (!currentScope || !currentScope->findFunction(*$1)) {
+            std::cerr << "Error: Function '" << *$1 << "' is not declared.\n";
+            YYABORT;  // Terminăm parsing-ul dacă funcția nu este găsită.
+        }
+        currentScope = previousScope;
+        $$ = new std::string(*$1); 
+        delete $1;  // Eliberăm memoria pentru IDENTIFIER (pointer la string)
+    }
+    | IDENTIFIER LPAREN RPAREN { 
+       
+        auto previousScope = currentScope;
+        currentScope = scope[0];
+        if (!currentScope || !currentScope->findFunction(*$1)) {
+            std::cerr << "Error: Function '" << *$1 << "' is not declared.\n";
+            YYABORT;  // Terminăm parsing-ul dacă funcția nu este găsită.
+        }
+        currentScope = previousScope;
+        $$ = new std::string(*$1); 
+        delete $1;  // Eliberăm memoria pentru IDENTIFIER (pointer la string)
+    }
+    | IDENTIFIER POINT IDENTIFIER LPAREN RPAREN { 
+        $$ = new std::string(*$3); 
+        delete $3;  // Eliberăm memoria pentru function_call (pointer la string)
+    }
+    | IDENTIFIER POINT IDENTIFIER LPAREN parameters_call RPAREN { 
+        $$ = new std::string(*$3); 
+        delete $3;  // Eliberăm memoria pentru function_call (pointer la string)
+    }
     ;
 
 statement:
@@ -236,11 +264,54 @@ statement:
     | WHILE boolean COLON block_scope statements STOP { 
         currentScope = currentScope->getParent();  
         $$ = new std::string("while (" + std::string($2 ? "true" : "false") + ") {\n" + *$5 + "\n}"); delete $5; }
-    | FOR IDENTIFIER ASSIGN expression SEMICOLON boolean SEMICOLON IDENTIFIER ASSIGN expression block_scope statements STOP { 
-        currentScope = currentScope->getParent();  
-        $$ = new std::string("for (" + *$2 + " = " + format_number($4) + "; " + std::string($6 ? "true" : "false") + "; " + *$8 + " = " + format_number($10) + ") {\n" + *$12 + "\n}"); delete $12; }
-    | IDENTIFIER ASSIGN expression SEMICOLON { $$ = new std::string("Assignment: " + *$1 + " = " + format_number($3)); delete $1; }
-    | IDENTIFIER ASSIGN STRING_LITERAL SEMICOLON { $$ = new std::string("Assignment: " + *$1 + " = " + *$3); delete $1; delete $3;}
+    | FOR IDENTIFIER ASSIGN expression SEMICOLON boolean SEMICOLON IDENTIFIER ASSIGN expression block_scope statements STOP {
+        // Verificăm dacă primul identificator (cel inițializat) este declarat.
+        if (!currentScope || (!currentScope->findVariable(*$2) && 
+                              (!currentScope->getParent() || !currentScope->getParent()->findVariable(*$2)))) {
+            std::cerr << "Error: Variable '" << *$2 << "' is not declared.\n";
+            YYABORT;  // Terminăm parsing-ul dacă variabila nu este găsită.
+        }
+
+        // Verificăm dacă al doilea identificator (în expresia incrementului/decrementului) este declarat.
+        if (!currentScope || (!currentScope->findVariable(*$8) && 
+                              (!currentScope->getParent() || !currentScope->getParent()->findVariable(*$8)))) {
+            std::cerr << "Error: Variable '" << *$8 << "' is not declared.\n";
+            YYABORT;  // Terminăm parsing-ul dacă variabila nu este găsită.
+        }
+
+        // Generăm șirul rezultat pentru bucla for.
+        $$ = new std::string("for (" + *$2 + " = " + format_number($4) + "; " + std::string($6 ? "true" : "false") + "; " + *$8 + " = " + format_number($10) + ") {\n" + *$12 + "\n}");
+        
+        // Eliberăm memoria.
+        delete $12;
+    }
+
+    | IDENTIFIER ASSIGN expression SEMICOLON {
+        // Verificăm dacă variabila există în scope-ul curent sau într-un scope părinte.
+        if (!currentScope || (!currentScope->findVariable(*$1) && 
+                              (!currentScope->getParent() || !currentScope->getParent()->findVariable(*$1)))) {
+            std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
+            YYABORT;  // Terminăm procesul parsing-ului dacă variabila nu este găsită.
+        }
+
+        // Dacă variabila există, continuăm cu atribuirea.
+        $$ = new std::string("Assignment: " + *$1 + " = " + format_number($3));
+        delete $1;  // Curățăm memoria asociată pointerului la string.
+    }
+  
+    | IDENTIFIER ASSIGN STRING_LITERAL SEMICOLON {
+        if (!currentScope || (!currentScope->findVariable(*$1) && 
+                              (!currentScope->getParent() || !currentScope->getParent()->findVariable(*$1)))) {
+            std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
+            YYABORT;  // Terminăm parsing-ul dacă variabila nu este găsită.
+        }
+
+        // Dacă variabila există, continuăm cu atribuirea.
+        $$ = new std::string("Assignment: " + *$1 + " = " + *$3);
+        delete $1;  // Curățăm memoria asociată pointerului la string pentru identificator.
+        delete $3;  // Curățăm memoria asociată pointerului la string pentru literal.
+    }
+
     | PRINT LPAREN expression RPAREN SEMICOLON { 
         print($3); 
         $$ = new std::string("print(" + format_number($3) + ");");
@@ -274,8 +345,20 @@ statement:
     }
     | variable_declaration { $$ = $1; }
     | fuction_call SEMICOLON { $$ = $1; }
-    | IDENTIFIER POINT IDENTIFIER ASSIGN expression SEMICOLON { $$ = new std::string("Assignment: " + *$3 + " = " + format_number($5)); delete $3; }
-    | IDENTIFIER POINT IDENTIFIER ASSIGN STRING_LITERAL SEMICOLON { $$ = new std::string("Assignment: " + *$3 + " = " + *$5); delete $3; delete $5;}
+    | IDENTIFIER POINT IDENTIFIER ASSIGN expression SEMICOLON { 
+                if (!currentScope || (!currentScope->findVariable(*$1) && 
+                              (!currentScope->getParent() || !currentScope->getParent()->findVariable(*$1)))) {
+            std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
+            YYABORT;  // Terminăm parsing-ul dacă prima variabilă nu este găsită.
+        }
+        $$ = new std::string("Assignment: " + *$3 + " = " + format_number($5)); delete $3; }
+    | IDENTIFIER POINT IDENTIFIER ASSIGN STRING_LITERAL SEMICOLON { 
+        if (!currentScope || (!currentScope->findVariable(*$1) && 
+                              (!currentScope->getParent() || !currentScope->getParent()->findVariable(*$1)))) {
+            std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
+            YYABORT;  // Terminăm parsing-ul dacă prima variabilă nu este găsită.
+        }
+        $$ = new std::string("Assignment: " + *$3 + " = " + *$5); delete $3; delete $5;}
     ;
 
 block_scope:
@@ -310,10 +393,50 @@ expression:
     | INT_NR_POZ { $$ = (double) $1; }
     | FLOAT_NR { $$ = (double) $1; }
     | CHAR_LITERAL { $$ = (double) $1; }
-    | IDENTIFIER { $$ = 0; }
-    | IDENTIFIER LSQUARE INT_NR_POZ RSQUARE { $$ = 0;  }
-    | IDENTIFIER LSQUARE INT_NR_POZ RSQUARE LSQUARE INT_NR_POZ RSQUARE { $$ = 0;}
-    | IDENTIFIER POINT IDENTIFIER { $$ = 0; }
+    | IDENTIFIER {
+        
+        if (!currentScope || (!currentScope->findVariable(*$1) && 
+                              (!currentScope->getParent() || !currentScope->getParent()->findVariable(*$1)))) {
+            std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
+            YYABORT;  // Terminăm parsing-ul dacă variabila nu este găsită.
+        }
+        $$ = 0;
+        delete $1;
+    }
+    | IDENTIFIER LSQUARE INT_NR_POZ RSQUARE {
+       
+        if (!currentScope || (!currentScope->findVariable(*$1) && 
+                              (!currentScope->getParent() || !currentScope->getParent()->findVariable(*$1)))) {
+            std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
+            YYABORT;  // Terminăm parsing-ul dacă variabila nu este găsită.
+        }
+        $$ = 0;
+        delete $1;
+       
+    }
+    | IDENTIFIER LSQUARE INT_NR_POZ RSQUARE LSQUARE INT_NR_POZ RSQUARE {
+        // Verificăm dacă variabila este declarată
+        if (!currentScope || (!currentScope->findVariable(*$1) && 
+                              (!currentScope->getParent() || !currentScope->getParent()->findVariable(*$1)))) {
+            std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
+            YYABORT;  // Terminăm parsing-ul dacă variabila nu este găsită.
+        }
+        $$ = 0;
+        delete $1;
+        
+        
+    }
+    | IDENTIFIER POINT IDENTIFIER {
+        // Verificăm dacă ambele variabile sunt declarate
+        if (!currentScope || (!currentScope->findVariable(*$1) && 
+                              (!currentScope->getParent() || !currentScope->getParent()->findVariable(*$1)))) {
+            std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
+            YYABORT;  // Terminăm parsing-ul dacă prima variabilă nu este găsită.
+        }
+        $$ = 0;
+        delete $1;
+        
+    }
     | expression PLUS expression { $$ = $1 + $3; }
     | expression MINUS expression { $$ = $1 - $3; }
     | expression MULT expression { $$ = $1 * $3; }

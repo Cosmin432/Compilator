@@ -50,6 +50,7 @@ Variables:
 Scope: main
 ----------------------------------------
 Variables:
+          integer             pui
               int               y = 6
             float              fl = 3.240000
            string             str = "text%"

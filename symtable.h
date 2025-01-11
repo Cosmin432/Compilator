@@ -52,6 +52,10 @@ public:
 
     void addClass(const std::string& name);
 
+    bool findVariable(const std::string& name) const;
+
+    bool findFunction(const std::string& name) const;
+
     void print(std::ostream& out) const;
 
     SymTable* getParent() const { return parent; }

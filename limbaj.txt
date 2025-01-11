@@ -19,8 +19,8 @@ int functie(int x, animal a, float m[10], bool b[5][5])
 }
 void main()
 {
+    integer pui;
     int y = 6;
-    y = 7;
     float fl = 3.24;
     string str = "text%";
     bool ok = 0;
@@ -31,10 +31,10 @@ void main()
     print (ok);
     animal a;
     a.age = 10;
-    print (a.fast());
+    a.fast();
     typeof (x);
-    functie(5, a, 10/2 + 5, fct(), m[20][20], "param");
-    fct(a.age);
+    functie(5, a, 10/2 + 5, a.fct(), v[20][20], "param");
+    functie(a.age);
     while x > y || ! x == 2 && x + 2 < y + 6:
     begin
         int z = x;
