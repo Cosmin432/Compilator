@@ -27,13 +27,16 @@ ASTValue ASTNode::evaluate(SymTable* currentScope) const {
     }
     if (type == NodeType::Operator) {
         ASTValue leftValue, rightValue;
-        if(left->getType(currentScope) == "int")
+        if(left->getType(currentScope) == "int" || left->getType(currentScope) == "int[]" || left->getType(currentScope) == "int[][]")
         {
             if(left->type == NodeType::Literal || left->type == NodeType::Operator)
                 leftValue = std::get<int>(left->evaluate(currentScope));
             else {
                 std::string str = std::get<std::string>(left->evaluate(currentScope));
-                leftValue = std::stoi(str);
+                if(str.size() == 0)
+                    leftValue = 0;
+                else
+                    leftValue = std::stoi(str);
             }
         }
         if(left->getType(currentScope) == "float")
@@ -42,7 +45,10 @@ ASTValue ASTNode::evaluate(SymTable* currentScope) const {
                 leftValue = std::get<float>(left->evaluate(currentScope));
             else {
                 std::string str = std::get<std::string>(left->evaluate(currentScope));
-                leftValue = std::stof(str);
+                if(str.size() == 0)
+                    leftValue = 0.0f;
+                else
+                    leftValue = std::stof(str);
             }
         }        
         
@@ -60,13 +66,16 @@ ASTValue ASTNode::evaluate(SymTable* currentScope) const {
         }
         if(right!= nullptr)
         {
-            if(right->getType(currentScope) == "int")
+            if(right->getType(currentScope) == "int" || right->getType(currentScope) == "int[]" || right->getType(currentScope) == "int[][]")
             {
                 if (right->type == NodeType::Literal || right->type == NodeType::Operator)
                     rightValue = std::get<int>(right->evaluate(currentScope));
                 else {
                     std::string str = std::get<std::string>(right->evaluate(currentScope));
-                    rightValue = std::stoi(str);
+                    if(str.size() == 0)
+                        rightValue = 0;
+                    else
+                        rightValue = std::stoi(str);
                 }
             }
 
@@ -76,7 +85,10 @@ ASTValue ASTNode::evaluate(SymTable* currentScope) const {
                     rightValue = std::get<float>(right->evaluate(currentScope));
                 else {
                     std::string str = std::get<std::string>(right->evaluate(currentScope));
-                    rightValue = std::stof(str);
+                    if(str.size() == 0)
+                        rightValue = 0.0f;
+                    else
+                        rightValue = std::stof(str);
                 }
             }  
 
@@ -170,6 +182,7 @@ ASTValue ASTNode::evaluate(SymTable* currentScope) const {
 // Get the type of the AST
 std::string ASTNode::getType(SymTable* currentScope) const {
     if (type == NodeType::Literal) {
+        if ((std::holds_alternative<char>(value))) return "char";
         if ((std::holds_alternative<int>(value))) return "int";
         if (std::holds_alternative<float>(value)) return "float";
         if (std::holds_alternative<bool>(value)) return "bool";

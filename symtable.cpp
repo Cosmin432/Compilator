@@ -1,4 +1,5 @@
 #include "symtable.h"
+#include "astnode.h"
 #include <iostream>
 #include <iomanip>
 SymTable* currentScope = nullptr;
@@ -41,6 +42,34 @@ void SymTable::addExpr(const std::string& val, const std::string& type) {
     expr_type.push_back(expr(val, type));
 }
 
+void SymTable::addNode(ASTValue val, std::string rez) {
+
+    ast.push_back({new ASTNode(val), rez});
+}
+
+void SymTable::addNode(std::string id, int ok, std::string rez) {
+    
+    ast.push_back({new ASTNode(id, ok), rez});
+}
+
+void SymTable::addNode(std::string op, ASTNode* left, ASTNode* right, std::string rez) {
+
+    ast.push_back({new ASTNode(op, left, right), rez});
+}
+
+ASTNode* SymTable::findnode(std::string rez) {
+
+    int lastIndex = -1;          // Indexul ultimei apariții (inițial -1)
+
+    // Parcurgem vectorul de la sfârșit la început
+    for (int i = ast.size() - 1; i >= 0; --i) {
+        if (ast[i].second == rez) {
+            lastIndex = i;
+            break; // Găsit ultima apariție, ieșim din buclă
+        }
+    }  
+    return ast[lastIndex].first;  
+}
 
 void SymTable::print(std::ostream& out) const {
     out << "Scope: " << scopeName << "\n";
@@ -138,6 +167,20 @@ std::string SymTable::getVariableType(const std::string& name) const {
     return {};
 }
 
+void SymTable::changeVariableValue(const std::string& name, std::string& val) {
+
+    int ok = 0;
+    for (Variable& var : variables) {
+        if (var.name == name) {
+            ok = 1;
+            var.value = val;
+        }
+    }
+    if (parent && ok == 0) {
+        parent->changeVariableValue(name, val); 
+    }    
+}
+
 std::string SymTable::getExprType(const std::string& name) const {
     for (const auto& exp : expr_type) {
         if (exp.val == name) {
@@ -148,4 +191,29 @@ std::string SymTable::getExprType(const std::string& name) const {
         return parent->getVariableType(name); 
     } 
     return {};    
+}
+
+std::string SymTable::getFunctionType(const std::string& name) const {
+    for (const auto& func : functions) {
+        if (func.name == name) {
+            return func.returnType; // Funcția a fost găsită
+        }
+    }
+
+    return {}; // Funcția nu a fost găsită în niciun scop    
+}
+
+std::string SymTable::getFunctionParameters(const std::string& name) const
+{
+    for (const auto& func : functions) {
+        if (func.name == name) {
+            std::string p = "";
+            for(const auto& param : func.params)
+                p = p + param + ", ";
+            p.resize(p.length() - 2);
+            return p;
+        }
+    }
+
+    return {}; // Funcția nu a fost găsită în niciun scop       
 }

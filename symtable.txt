@@ -1,10 +1,10 @@
 Scope: global
 ----------------------------------------
 Variables:
-              int               x = 2
-          int[10]               v
+              int               x = 4
+            int[]               v
 Functions:
-              int         functie(int, animal, float[10], bool[5][5])
+              int         functie(int, animal, float, bool[][])
 Classes:
   integer
   animal
@@ -16,7 +16,7 @@ Expr:
 Scope: integer
 ----------------------------------------
 Variables:
-    float[50][50]             mat
+        float[][]             mat
               int               y
 ----------------------------------------
 
@@ -45,8 +45,8 @@ Scope: functie
 Variables:
               int               x
            animal               a
-        float[10]               m
-       bool[5][5]               b
+            float               m
+         bool[][]               b
               int               i
 ----------------------------------------
 
@@ -55,21 +55,28 @@ Scope: main
 ----------------------------------------
 Variables:
           integer             pui
-              int               y = 8
+              int               y = x
             float              fl = 3.240000
            string             str = "text%"
-             bool              ok = 0
+             bool              ok = True
              char               i = .
              char               c
            animal               a
+         bool[][]               b
+              int              zz
+              int               z = 1
+              int              ix = 110
               int            pula
               int              pl
 Expr:
-              int               6
+            float        7.500000
+            float        2.654300
+            float       10.154300
               int               x
+              int               6
               int               8
             float        3.240000
-              int               0
+             bool            True
              char               .
              char               ?
               int               4
@@ -77,14 +84,26 @@ Expr:
              bool              ok
               int              10
               int               x
+              int               1
+              int               v
+              int               1
+              int              10
+              int              ix
+              int              ix
+              int              ix
+              int               4
+              int              40
+              int              50
+              int               2
+              int             100
+              int             110
+              int              ix
               int               5
            animal               a
-              int              10
-              int               2
-              int               5
-              int               5
-              int              10
-          int[10]               v
+            float        5.500000
+            float        1.200000
+            float        6.700000
+         bool[][]               b
               int               x
               int               y
               int               x
@@ -108,7 +127,7 @@ Expr:
               int              10
               int               x
               int               1
-              int               3
+              int               5
               int               x
               int               2
               int               1
@@ -130,10 +149,13 @@ Expr:
 Scope: block
 ----------------------------------------
 Variables:
-              int               z = x
+              int               z = 4
 Expr:
               int               x
               int               x
+              int               4
+              int               x
+              int               y
               int               x
               int               x
               int               4

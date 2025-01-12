@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <iostream>
+#include "astnode.h"
 
 struct Variable {
     std::string type;
@@ -12,7 +13,7 @@ struct Variable {
     std::string value;
 
     Variable() : type(""), name(""), value("") {}
-    Variable(const std::string& type, const std::string& name, const std::string& value = "")
+    Variable(const std::string& type, const std::string& name, const std::string& value)
         : type(type), name(name), value(value) {}
 };
 
@@ -49,7 +50,8 @@ private:
     std::vector<Variable> variables;                  
     std::vector<Function> functions;                  
     std::vector<Class> classes;  
-    std::vector<expr> expr_type;                    
+    std::vector<expr> expr_type;
+    std::vector<std::pair<ASTNode*, std::string>> ast;                   
 
 public:
     SymTable(const std::string& scopeName, SymTable* parent = nullptr)
@@ -62,6 +64,14 @@ public:
     void addClass(const std::string& name);
 
     void addExpr(const std::string& val, const std::string& type);
+
+    void addNode(ASTValue val, std::string rez);
+
+    void addNode(std::string id, int ok, std::string rez);
+
+    void addNode(std::string op, ASTNode* left, ASTNode* right, std::string rez);
+
+    ASTNode* findnode(std::string rez);
 
     bool findVariable(const std::string& name) const;
 
@@ -76,10 +86,16 @@ public:
     void rename(std::string name) { scopeName = name; } 
 
     std::string getVariableValue(const std::string& name) const;
+
+    void changeVariableValue(const std::string& name, std::string& val);
     
     std::string getVariableType(const std::string& name) const;
 
     std::string getExprType(const std::string& name) const;
+
+    std::string getFunctionType(const std::string& name) const;
+
+    std::string getFunctionParameters(const std::string& name) const;
 };
 extern SymTable* currentScope;
 

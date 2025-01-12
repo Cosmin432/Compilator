@@ -36,6 +36,8 @@ size [1-9][0-9]*
 "main" { return MAIN; }
 "print" { return PRINT; }
 "typeof" { return TYPEOF; }
+"True" { return TRUE_BOOL; }
+"False" { return FALSE_BOOL; }
 
 \"[^\"]*\" { 
     yylval.str_val = new std::string(yytext); 

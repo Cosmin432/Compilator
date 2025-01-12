@@ -6,6 +6,7 @@
     #include <cstring>
     #include "tema.tab.h"
     #include "symtable.h" 
+    #include "astnode.h"
 
     extern SymTable* currentScope; 
     int yylex(void);
@@ -53,8 +54,8 @@
 %token <str_val> STRING_LITERAL
 %token <char_val> CHAR_LITERAL
 %token <name> IDENTIFIER
-%type <prog> program statements variable_declarations variable_declaration statement main_scope name_scope class_declaration function_definition class_declarations function_definitions main_function fuction_call class_inside class_insides parameter parameters
-%token PRINT MAIN INT FLOAT CLASS IF ELSE WHILE VOID TRUE FALSE TYPEOF START STOP
+%type <prog> program statements variable_declarations variable_declaration statement main_scope name_scope class_declaration function_definition class_declarations function_definitions main_function fuction_call class_inside class_insides parameter parameters parameter_call parameters_call
+%token PRINT MAIN INT FLOAT CLASS IF ELSE WHILE VOID TRUE FALSE TYPEOF START STOP TRUE_BOOL FALSE_BOOL
 %token FOR BOOL CHAR STRING INC DECR PLUS MINUS MULT DIV GEQ LEQ EQ NEQ ASSIGN LOW GRT NOT AND OR
 %token COMMA LPAREN RPAREN LBRACE RBRACE SEMICOLON LSQUARE RSQUARE COLON POINT
 
@@ -66,6 +67,7 @@
 %left PLUS MINUS    
 %left MULT DIV  
 %left NOT    
+%left LPAREN
 %left OR AND    
 %left EQ NEQ    
 %right ASSIGN      
@@ -165,13 +167,13 @@ parameter:
         currentScope->addVariable(*$1, *$2, {});
         $$ = new std::string(*$1 + " " + *$2); delete $1; delete $2; }
     | type IDENTIFIER LSQUARE INT_NR_POZ RSQUARE { 
-        $$ = new std::string(*$1 + "[" + format_number($4) + "]");
+        $$ = new std::string(*$1 + "[]");
         currentScope->addVariable(*$$, *$2, {});
-        $$ = new std::string(*$1 + "[" + format_number($4) + "] " + *$2); delete $1; delete $2; }
+        $$ = new std::string(*$1 + "[] " + *$2); delete $1; delete $2; }
     | type IDENTIFIER LSQUARE INT_NR_POZ RSQUARE LSQUARE INT_NR_POZ RSQUARE { 
-        $$ = new std::string(*$1 + "[" + format_number($4) + "][" + format_number($7) + "]");
+        $$ = new std::string(*$1 + "[][]");
         currentScope->addVariable(*$$, *$2, {});
-        $$ = new std::string(*$1 + "[" + format_number($4) + "][" + format_number($7) + "] " + *$2); delete $1; delete $2; }
+        $$ = new std::string(*$1 + "[][] " + *$2); delete $1; delete $2; }
     | IDENTIFIER IDENTIFIER { 
         currentScope->addVariable(*$1, *$2);
         $$ = new std::string(*$1 + " " + *$2); delete $1; delete $2; }
@@ -207,17 +209,27 @@ variable_declaration:
         currentScope->addVariable(*$1, *$2, {});
         $$ = new std::string("Declaration: " + *$1 + " " + *$2 + ";"); delete $1; delete $2; }
     | type IDENTIFIER LSQUARE INT_NR_POZ RSQUARE SEMICOLON { 
-        $$ = new std::string(*$1 + "[" + format_number($4) + "]");
+        $$ = new std::string(*$1 + "[]");
         currentScope->addVariable(*$$, *$2, {});
         delete $1; delete $2; }
     | type IDENTIFIER LSQUARE INT_NR_POZ RSQUARE LSQUARE INT_NR_POZ RSQUARE SEMICOLON {
-        $$ = new std::string(*$1 + "[" + format_number($4) + "][" + format_number($7) + "]");
+        $$ = new std::string(*$1 + "[][]");
         currentScope->addVariable(*$$, *$2, {});
         delete $1; delete $2; }
     | type IDENTIFIER ASSIGN expression SEMICOLON { 
+        if(currentScope->getExprType(*$4) != *$1)
+        {
+            std::cerr << "Error: Incompatible types\n";
+            YYABORT;
+        }
         currentScope->addVariable(*$1, *$2, *$4);
         $$ = new std::string("Declaration: " + *$1 + " " + *$2 + " = " + *$4 + ";"); delete $1; delete $2; delete $4; }
     | type IDENTIFIER ASSIGN STRING_LITERAL SEMICOLON { 
+        if("string" != *$1)
+        {
+            std::cerr << "Error: Incompatible types\n";
+            YYABORT;
+        }
         currentScope->addVariable(*$1, *$2, *$4);
         $$ = new std::string("Declaration: " + *$1 + " " + *$2 + " = " + *$4 + ";"); delete $1; delete $2; delete $4;}
     | IDENTIFIER IDENTIFIER SEMICOLON { 
@@ -234,6 +246,12 @@ fuction_call:
             YYABORT;  // Terminăm parsing-ul dacă funcția nu este găsită.
         }
         currentScope = previousScope;
+        std::string param = scope[0]->getFunctionParameters(*$1);
+        if(param != *$3)
+        {
+            std::cerr << "Incompatible parameters types\n";
+            YYABORT;
+        }
         $$ = new std::string(*$1); 
         delete $1;  // Eliberăm memoria pentru IDENTIFIER (pointer la string)
     }
@@ -246,6 +264,13 @@ fuction_call:
             YYABORT;  // Terminăm parsing-ul dacă funcția nu este găsită.
         }
         currentScope = previousScope;
+        std::string param = scope[0]->getFunctionParameters(*$1);
+        std::string gol = {};
+        if(param != gol)
+        {
+            std::cerr << "Incompatible parameters types\n";
+            YYABORT;
+        }
         $$ = new std::string(*$1); 
         delete $1;  // Eliberăm memoria pentru IDENTIFIER (pointer la string)
     }
@@ -281,7 +306,16 @@ statement:
             std::cerr << "Error: Variable '" << *$8 << "' is not declared.\n";
             YYABORT;  // Terminăm parsing-ul dacă variabila nu este găsită.
         }
-
+        if(currentScope->getExprType(*$2) != currentScope->getExprType(*$4))
+        {
+            std::cerr << "Error: Incompatible types\n";
+            YYABORT;
+        }
+        if(currentScope->getExprType(*$8) != currentScope->getExprType(*$10))
+        {
+            std::cerr << "Error: Incompatible types\n";
+            YYABORT;
+        }
         // Generăm șirul rezultat pentru bucla for.
         $$ = new std::string("for " + *$2 + " = " + *$4 + "; ");
         
@@ -297,9 +331,14 @@ statement:
             std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
             YYABORT;  // Terminăm procesul parsing-ului dacă variabila nu este găsită.
         }
-
+        if(currentScope->getExprType(*$1) != currentScope->getExprType(*$3))
+        {
+            std::cerr << "Error: Incompatible types\n";
+            YYABORT;
+        }
         // Dacă variabila există, continuăm cu atribuirea.
         $$ = new std::string("Assignment: " + *$1 + " = " + *$3);
+        currentScope->changeVariableValue(*$1, *$3);
         delete $1;  // Curățăm memoria asociată pointerului la string.
         delete $3;  // Curățăm memoria asociată pointerului la string.
     }
@@ -310,7 +349,11 @@ statement:
             std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
             YYABORT;  // Terminăm parsing-ul dacă variabila nu este găsită.
         }
-
+        if(currentScope->getExprType(*$1) != "string")
+        {
+            std::cerr << "Error: Incompatible types\n";
+            YYABORT;
+        }
         // Dacă variabila există, continuăm cu atribuirea.
         $$ = new std::string("Assignment: " + *$1 + " = " + *$3);
         delete $1;  // Curățăm memoria asociată pointerului la string pentru identificator.
@@ -318,7 +361,11 @@ statement:
     }
 
     | PRINT LPAREN expression RPAREN SEMICOLON { 
-        print(*$3); 
+        std::string& exp = *$3; 
+        if((exp[0] >= 'a' && exp[0] <= 'z') || (exp[0] >= 'A' && exp[0] <= 'Z'))
+            print(currentScope->getVariableValue(exp));
+        else
+            print(*$3); 
         $$ = new std::string("print(" + *$3 + ");");
         delete $3;
     }    
@@ -377,14 +424,14 @@ block_scope:
     ;
 
 parameters_call:
-    parameter_call
-    | parameters_call COMMA parameter_call
+    parameter_call { $$ = new std::string(*$1); delete $1; }
+    | parameters_call COMMA parameter_call { $$ = new std::string(*$1 + ", " + *$3); delete $1; delete $3; }
     ;
 
 parameter_call:
-    expression
-    | fuction_call
-    | STRING_LITERAL
+    expression { $$ = new std::string(currentScope->getExprType(*$1)); delete $1; }
+    | fuction_call { $$ = new std::string(currentScope->getFunctionType(*$1)); delete $1; }
+    | STRING_LITERAL { $$ = new std::string("string"); }
     ;
 
 type:
@@ -396,21 +443,32 @@ type:
     ;
 
 expression:
-    INT_NR_NEG { 
-        $$ = new std::string(std::to_string($1)); 
+    LPAREN expression RPAREN {
+        $$ = new std::string(*$2);
+    }        
+    | INT_NR_NEG {
+        std::string str = std::to_string($1); // Nu mai folosim new
+        $$ = new std::string(std::to_string(std::get<int>((new ASTNode($1))->evaluate(currentScope))));
+        currentScope->addNode($1, *$$); 
         currentScope->addExpr(*$$, "int");
     }
     | INT_NR_POZ { 
-        $$ = new std::string(std::to_string($1)); 
-        currentScope->addExpr(*$$, "int");    
+        std::string str = std::to_string($1); // Nu mai folosim new
+        $$ = new std::string(std::to_string(std::get<int>((new ASTNode($1))->evaluate(currentScope))));
+        currentScope->addNode($1, *$$); 
+        currentScope->addExpr(*$$, "int");   
     }
     | FLOAT_NR { 
-        $$ = new std::string(std::to_string($1)); 
-        currentScope->addExpr(*$$, "float");    
+        std::string str = std::to_string($1); // Nu mai folosim new
+        $$ = new std::string(std::to_string(std::get<float>((new ASTNode($1))->evaluate(currentScope))));
+        currentScope->addNode($1, *$$); 
+        currentScope->addExpr(*$$, "float");   
     }
     | CHAR_LITERAL { 
-        $$ = new std::string(1, $1); 
-        currentScope->addExpr(*$$, "char");
+        std::string str = std::string("") + $1; // Nu mai folosim new
+        $$ = new std::string(std::string("") + (std::get<char>((new ASTNode((char)$1))->evaluate(currentScope))));
+        currentScope->addNode($1, *$$); 
+        currentScope->addExpr(*$$, "char");  
     }
     | IDENTIFIER {
         
@@ -421,6 +479,7 @@ expression:
         }
         $$ = new std::string(*$1);
         currentScope->addExpr(*$$, currentScope->getVariableType(*$1));
+        currentScope->addNode(*$$, 1, *$$); 
         delete $1;
     }
     | IDENTIFIER LSQUARE INT_NR_POZ RSQUARE {
@@ -437,6 +496,8 @@ expression:
             cnt++;
         type.resize(cnt);
         currentScope->addExpr(*$$, type);
+        currentScope->addNode(*$$, 1, *$$); 
+
         delete $1;
        
     }
@@ -454,6 +515,7 @@ expression:
             cnt++;
         type.resize(cnt);
         currentScope->addExpr(*$$, type);
+        currentScope->addNode(*$$, 1, *$$ + "[][]"); 
         delete $1;
     }
     | IDENTIFIER POINT IDENTIFIER {
@@ -464,12 +526,15 @@ expression:
             YYABORT;  // Terminăm parsing-ul dacă prima variabilă nu este găsită.
         }
         $$ = new std::string(*$1 + "." + *$3);
+        currentScope->addNode(*$$, 1, *$$); 
         delete $1;
         delete $3;    
     }
     | expression PLUS expression { 
         std::string& e1 = *$1;
         std::string& e2 = *$3;
+        ASTNode* left = currentScope->findnode(e1);
+        ASTNode* right = currentScope->findnode(e2);
         if(currentScope->getExprType(e1) != currentScope->getExprType(e2))
         {
             std::cerr << "Error: Incompatible types\n";
@@ -481,22 +546,20 @@ expression:
             e2 = currentScope->getVariableValue(e2);
         if (e1.find('.') != std::string::npos) {
             // Este un float/double
-            float num1 = std::stof(e1);
-            float num2 = std::stof(e2);
-            float sum = num1 + num2;
-            $$ = new std::string(std::to_string(sum));
+            $$ = new std::string(std::to_string(std::get<float>((new ASTNode("+", left, right))->evaluate(currentScope))));
+            currentScope->addNode("+", left, right, *$$);
             currentScope->addExpr(*$$, "float");
         } else {
-            int num1 = std::stoi(e1);
-            int num2 = std::stoi(e2);
-            int sum = num1 + num2;
-            $$ = new std::string(std::to_string(sum));
+            $$ = new std::string(std::to_string(std::get<int>((new ASTNode("+", left, right))->evaluate(currentScope))));
+            currentScope->addNode("+", left, right, *$$);
             currentScope->addExpr(*$$, "int");
         }    
     }
     | expression MINUS expression { 
         std::string& e1 = *$1;
         std::string& e2 = *$3;
+        ASTNode* left = currentScope->findnode(e1);
+        ASTNode* right = currentScope->findnode(e2);
         if(currentScope->getExprType(e1) != currentScope->getExprType(e2))
         {
             std::cerr << "Error: Incompatible types\n";
@@ -508,22 +571,20 @@ expression:
             e2 = currentScope->getVariableValue(e2);
         if (e1.find('.') != std::string::npos) {
             // Este un float/double
-            float num1 = std::stof(e1);
-            float num2 = std::stof(e2);
-            float sum = num1 - num2;
-            $$ = new std::string(std::to_string(sum));
+            $$ = new std::string(std::to_string(std::get<float>((new ASTNode("-", left, right))->evaluate(currentScope))));
+            currentScope->addNode("-", left, right, *$$);
             currentScope->addExpr(*$$, "float");
         } else {
-            int num1 = std::stoi(e1);
-            int num2 = std::stoi(e2);
-            int sum = num1 - num2;
-            $$ = new std::string(std::to_string(sum));
+            $$ = new std::string(std::to_string(std::get<int>((new ASTNode("-", left, right))->evaluate(currentScope))));
+            currentScope->addNode("-", left, right, *$$);
             currentScope->addExpr(*$$, "int");
-        }        
+        }       
     }
     | expression MULT expression { 
         std::string& e1 = *$1;
         std::string& e2 = *$3;
+        ASTNode* left = currentScope->findnode(e1);
+        ASTNode* right = currentScope->findnode(e2);
         if(currentScope->getExprType(e1) != currentScope->getExprType(e2))
         {
             std::cerr << "Error: Incompatible types\n";
@@ -535,22 +596,20 @@ expression:
             e2 = currentScope->getVariableValue(e2);
         if (e1.find('.') != std::string::npos) {
             // Este un float/double
-            float num1 = std::stof(e1);
-            float num2 = std::stof(e2);
-            float sum = num1 * num2;
-            $$ = new std::string(std::to_string(sum));
+            $$ = new std::string(std::to_string(std::get<float>((new ASTNode("*", left, right))->evaluate(currentScope))));
+            currentScope->addNode("*", left, right, *$$);
             currentScope->addExpr(*$$, "float");
         } else {
-            int num1 = std::stoi(e1);
-            int num2 = std::stoi(e2);
-            int sum = num1 * num2;
-            $$ = new std::string(std::to_string(sum));
+            $$ = new std::string(std::to_string(std::get<int>((new ASTNode("*", left, right))->evaluate(currentScope))));
+            currentScope->addNode("*", left, right, *$$);
             currentScope->addExpr(*$$, "int");
         }        
     }
     | expression DIV expression {
         std::string& e1 = *$1;
         std::string& e2 = *$3;
+        ASTNode* left = currentScope->findnode(e1);
+        ASTNode* right = currentScope->findnode(e2);
         if(currentScope->getExprType(e1) != currentScope->getExprType(e2))
         {
             std::cerr << "Error: Incompatible types\n";
@@ -560,36 +619,91 @@ expression:
             e1 = currentScope->getVariableValue(e1);
         if (e2[0] < '0' || e2[0] > '9')
             e2 = currentScope->getVariableValue(e2);
-
         if (e1.find('.') != std::string::npos) {
             // Este un float/double
-            float num1 = std::stof(e1);
-            float num2 = std::stof(e2);
-            float sum = num1 / num2;
-            $$ = new std::string(std::to_string(sum));
+            $$ = new std::string(std::to_string(std::get<float>((new ASTNode("/", left, right))->evaluate(currentScope))));
+            currentScope->addNode("/", left, right, *$$);
             currentScope->addExpr(*$$, "float");
         } else {
-            int num1 = std::stoi(e1);
-            int num2 = std::stoi(e2);
-            int sum = num1 / num2;
-            $$ = new std::string(std::to_string(sum));
+            $$ = new std::string(std::to_string(std::get<int>((new ASTNode("/", left, right))->evaluate(currentScope))));
+            currentScope->addNode("/", left, right, *$$);
             currentScope->addExpr(*$$, "int");
-        }        
+        }       
+    }
+    | TRUE_BOOL {        
+        $$ = new std::string("True"); 
+        currentScope->addExpr(*$$, "bool");
+    }
+    | FALSE_BOOL {
+        $$ = new std::string("False"); 
+        currentScope->addExpr(*$$, "bool");
     }
     ;
 
 boolean:   
-    TRUE { $$ = true; }
-    | FALSE { $$ = false; }
-    | expression LOW expression { $$ = $1 < $3; }
-    | expression GRT expression { $$ = $1 > $3; }
-    | expression GEQ expression { $$ = $1 >= $3; }
-    | expression LEQ expression { $$ = $1 <= $3; }
-    | expression EQ expression { $$ = $1 == $3; }
-    | expression NEQ expression { $$ = $1 != $3; }
-    | boolean AND boolean { $$ = $1 && $3; }
-    | boolean OR boolean { $$ = $1 || $3; }
-    | NOT boolean { $$ = !$2; }
+    TRUE { 
+        std::string str = "true"; 
+        $$ = std::get<bool>((new ASTNode(true))->evaluate(currentScope));
+        currentScope->addNode(true, std::to_string($$)); 
+    }
+    | FALSE {
+        std::string str = "false"; 
+        $$ = std::get<bool>((new ASTNode(false))->evaluate(currentScope));
+        currentScope->addNode(false, std::to_string($$)); 
+    }
+    | expression LOW expression { 
+        ASTNode* left = currentScope->findnode(*$1);
+        ASTNode* right = currentScope->findnode(*$3);
+        $$ = std::get<bool>((new ASTNode("<", left, right))->evaluate(currentScope));
+        currentScope->addNode("<", left, right, std::to_string($$));
+    }
+    | expression GRT expression { 
+            ASTNode* left = currentScope->findnode(*$1);
+        ASTNode* right = currentScope->findnode(*$3);
+        $$ = std::get<bool>((new ASTNode(">", left, right))->evaluate(currentScope));
+        currentScope->addNode(">", left, right, std::to_string($$));
+    }
+    | expression GEQ expression { 
+        ASTNode* left = currentScope->findnode(*$1);
+        ASTNode* right = currentScope->findnode(*$3);
+        $$ = std::get<bool>((new ASTNode(">=", left, right))->evaluate(currentScope));
+        currentScope->addNode(">=", left, right, std::to_string($$));
+    }
+    | expression LEQ expression { 
+            ASTNode* left = currentScope->findnode(*$1);
+        ASTNode* right = currentScope->findnode(*$3);
+        $$ = std::get<bool>((new ASTNode("<=", left, right))->evaluate(currentScope));
+        currentScope->addNode("<=", left, right, std::to_string($$));
+    }
+    | expression EQ expression { 
+        ASTNode* left = currentScope->findnode(*$1);
+        ASTNode* right = currentScope->findnode(*$3);
+        $$ = std::get<bool>((new ASTNode("==", left, right))->evaluate(currentScope));
+        currentScope->addNode("==", left, right, std::to_string($$));
+    }
+    | expression NEQ expression {
+        ASTNode* left = currentScope->findnode(*$1);
+        ASTNode* right = currentScope->findnode(*$3);
+        $$ = std::get<bool>((new ASTNode("!=", left, right))->evaluate(currentScope));
+        currentScope->addNode("!=", left, right, std::to_string($$));
+    }
+    | boolean AND boolean {
+        ASTNode* left = currentScope->findnode(std::to_string($1));
+        ASTNode* right = currentScope->findnode(std::to_string($3));
+        $$ = std::get<bool>((new ASTNode("&&", left, right))->evaluate(currentScope));
+        currentScope->addNode("&&", left, right, std::to_string($$));
+    }
+    | boolean OR boolean {
+        ASTNode* left = currentScope->findnode(std::to_string($1));
+        ASTNode* right = currentScope->findnode(std::to_string($3));
+        $$ = std::get<bool>((new ASTNode("||", left, right))->evaluate(currentScope));
+        currentScope->addNode("||", left, right, std::to_string($$));    
+    }
+    | NOT boolean { 
+        ASTNode* left = currentScope->findnode(std::to_string($2));
+        $$ = std::get<bool>((new ASTNode("!", left, nullptr))->evaluate(currentScope));
+        currentScope->addNode("!", left, nullptr, std::to_string($$));
+    }
     ;
 
 %%

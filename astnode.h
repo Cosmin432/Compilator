@@ -7,7 +7,7 @@
 #include <iostream>
 
 // Define a variant for holding node values
-using ASTValue = std::variant<int, float, bool, std::string, char>;
+using ASTValue = std::variant<char, int, float, bool, std::string>;
 
 // Forward declaration of Symbol Table
 class SymTable;
@@ -28,13 +28,14 @@ public:
     ASTNode(std::string id, int ok);
 
     // Constructor for operators (e.g., '+', '*', '||')
-    ASTNode(std::string op, ASTNode* left, ASTNode* right = nullptr);
+    ASTNode(std::string op, ASTNode* left, ASTNode* right);
 
     // Evaluate the AST
     ASTValue evaluate(SymTable* currentScope) const;
 
     // Get the type of the AST (e.g., "int", "float", "bool")
     std::string getType(SymTable* currentScope) const;
+
 
 private:
     NodeType type;                         // Type of the node
