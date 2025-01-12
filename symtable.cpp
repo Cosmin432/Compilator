@@ -87,7 +87,8 @@ bool SymTable::findVariable(const std::string& name) const {
     }
     return false;
 }
-    bool SymTable::findFunction(const std::string& name) const {
+
+bool SymTable::findFunction(const std::string& name) const {
     // Căutăm funcția în lista de funcții din scopul curent
     for (const auto& func : functions) {
         if (func.name == name) {
@@ -98,4 +99,26 @@ bool SymTable::findVariable(const std::string& name) const {
     return false; // Funcția nu a fost găsită în niciun scop
 }
 
-
+std::string SymTable::getVariableValue(const std::string& name) const {
+    for (const auto& var : variables) {
+        if (var.name == name) {
+            return var.value;
+        }
+    }
+    if (parent) {
+        return parent->getVariableValue(name); 
+    }    
+    return {};
+}
+    
+std::string SymTable::getVariableType(const std::string& name) const {
+    for (const auto& var : variables) {
+        if (var.name == name) {
+            return var.type;
+        }
+    }
+    if (parent) {
+        return parent->getVariableType(name); 
+    } 
+    return {};
+}

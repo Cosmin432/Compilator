@@ -63,6 +63,10 @@ public:
     std::string getScopeName() const { return scopeName; }
 
     void rename(std::string name) { scopeName = name; } 
+
+    std::string getVariableValue(const std::string& name) const;
+    
+    std::string getVariableType(const std::string& name) const;
 };
 extern SymTable* currentScope;
 
