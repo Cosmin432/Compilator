@@ -36,6 +36,12 @@ void SymTable::addClass(const std::string& name) {
     classes.push_back(Class(name)); 
 }
 
+void SymTable::addExpr(const std::string& val, const std::string& type) {
+
+    expr_type.push_back(expr(val, type));
+}
+
+
 void SymTable::print(std::ostream& out) const {
     out << "Scope: " << scopeName << "\n";
     out << std::string(40, '-') << "\n";
@@ -69,6 +75,15 @@ void SymTable::print(std::ostream& out) const {
         out << "Classes:\n";
         for (const auto& cls : classes) {
             out << "  " << cls.name << "\n";
+        }
+    }
+
+    if (!expr_type.empty()) {
+        out << "Expr:\n";
+        for (const auto& variable : expr_type) {
+            out << "  " << std::setw(15) << variable.type << " " 
+                << std::setw(15) << variable.val;
+            out << "\n";
         }
     }
 
@@ -121,4 +136,16 @@ std::string SymTable::getVariableType(const std::string& name) const {
         return parent->getVariableType(name); 
     } 
     return {};
+}
+
+std::string SymTable::getExprType(const std::string& name) const {
+    for (const auto& exp : expr_type) {
+        if (exp.val == name) {
+            return exp.type;
+        }
+    }
+    if (parent) {
+        return parent->getVariableType(name); 
+    } 
+    return {};    
 }

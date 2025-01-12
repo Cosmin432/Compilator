@@ -1,5 +1,4 @@
-#ifndef ASTNODE_H
-#define ASTNODE_H
+#pragma once
 
 #include <memory>
 #include <variant>
@@ -45,4 +44,3 @@ private:
     ASTNode* right;        // Right subtree
 };
 
-#endif // ASTNODE_H

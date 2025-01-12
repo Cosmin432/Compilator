@@ -20,7 +20,7 @@ int functie(int x, animal a, float m[10], bool b[5][5])
 void main()
 {
     integer pui;
-    int y = 6;
+    int y = 6 + x;
     float fl = 3.24;
     string str = "text%";
     bool ok = 0;
@@ -33,7 +33,7 @@ void main()
     a.age = 10;
     a.fast();
     typeof (x);
-    functie(5, a, 10/2 + 5, a.fct(), v[20][20], "param");
+    functie(5, a, 10/2 + 5, a.fct(), v, "param");
     functie(a.age);
     while x > y || ! x == 2 && x + 2 < y + 6:
     begin
@@ -44,14 +44,20 @@ void main()
         print (5 * 5 >= 30 - 5);
         typeof (5 * 5 >= 30 - 5);
     end
-    print (20 * 5 + 12 / 5);
+    print (10);
+    print (20 * 5 + 10 / 5);
     for x = 1 ; x < 10 ; x = x + 1
     begin
         char a = '1';
         print (x);
     end
+    int pula;
+    int pl;
     if x < 2:
     begin
         int y = 7;
     end
+    print (1 + 2 * 7 - 5);
+    print (1 + 2 * 7 - 5.5);
+    print (1 >= 1 + 3);
 }

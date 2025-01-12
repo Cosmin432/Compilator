@@ -1,6 +1,7 @@
 #include "astnode.h"
 #include "symtable.h" // Assuming the symbol table is defined here
 #include <string>
+#include <variant>
 
 // Constructor for literals
 ASTNode::ASTNode(ASTValue val) : type(NodeType::Literal), value(val) {}

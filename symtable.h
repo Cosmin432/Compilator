@@ -34,13 +34,22 @@ struct Class {
     Class(const std::string& name) : name(name) {}
 };
 
+struct expr {
+    std::string val;
+    std::string type;
+    expr() : val(""), type("") {}
+    expr(const std::string& val, const std::string& type) 
+        : val(val), type(type) {}
+};
+
 class SymTable {
 private:
     std::string scopeName;                            
     SymTable* parent;                 
     std::vector<Variable> variables;                  
     std::vector<Function> functions;                  
-    std::vector<Class> classes;                      
+    std::vector<Class> classes;  
+    std::vector<expr> expr_type;                    
 
 public:
     SymTable(const std::string& scopeName, SymTable* parent = nullptr)
@@ -51,6 +60,8 @@ public:
     void addFunction(const std::string& name, const std::string& returnType, const std::vector<std::string>& params, const std::string& class_name);
 
     void addClass(const std::string& name);
+
+    void addExpr(const std::string& val, const std::string& type);
 
     bool findVariable(const std::string& name) const;
 
@@ -67,6 +78,8 @@ public:
     std::string getVariableValue(const std::string& name) const;
     
     std::string getVariableType(const std::string& name) const;
+
+    std::string getExprType(const std::string& name) const;
 };
 extern SymTable* currentScope;
 

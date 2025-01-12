@@ -3,7 +3,7 @@
     #include <string>
     #include "tema.tab.h"
     #include "symtable.h"  
-
+    #include "astnode.h"
     extern SymTable* currentScope;  
     void yyerror(const char *s);
     extern FILE *yyin;

@@ -8,6 +8,8 @@ Functions:
 Classes:
   integer
   animal
+Expr:
+              int               2
 ----------------------------------------
 
 
@@ -33,6 +35,8 @@ Scope: fast
 ----------------------------------------
 Variables:
               int           speed
+Expr:
+              int           speed
 ----------------------------------------
 
 
@@ -51,13 +55,120 @@ Scope: main
 ----------------------------------------
 Variables:
           integer             pui
-              int               y = 6
+              int               y = 8
             float              fl = 3.240000
            string             str = "text%"
              bool              ok = 0
-             char               i = 46
+             char               i = .
              char               c
            animal               a
+              int            pula
+              int              pl
+Expr:
+              int               6
+              int               x
+              int               8
+            float        3.240000
+              int               0
+             char               .
+             char               ?
+              int               4
+              int               3
+             bool              ok
+              int              10
+              int               x
+              int               5
+           animal               a
+              int              10
+              int               2
+              int               5
+              int               5
+              int              10
+          int[10]               v
+              int               x
+              int               y
+              int               x
+              int               2
+              int               x
+              int               2
+              int               4
+              int               y
+              int               6
+              int              14
+              int              10
+              int              20
+              int               5
+              int             100
+              int              10
+              int               5
+              int               2
+              int             102
+              int               1
+              int               x
+              int              10
+              int               x
+              int               1
+              int               3
+              int               x
+              int               2
+              int               1
+              int               2
+              int               7
+              int              14
+              int              15
+              int               5
+              int              10
+              int               1
+              int               2
+              int               7
+              int              14
+              int              15
+            float        5.500000
+----------------------------------------
+
+
+Scope: block
+----------------------------------------
+Variables:
+              int               z = x
+Expr:
+              int               x
+              int               x
+              int               x
+              int               x
+              int               4
+              int               5
+              int               5
+              int               5
+              int              25
+              int              30
+              int               5
+              int              25
+              int               5
+              int               5
+              int              25
+              int              30
+              int               5
+              int              25
+----------------------------------------
+
+
+Scope: block
+----------------------------------------
+Variables:
+             char               a = 1
+Expr:
+             char               1
+              int               x
+----------------------------------------
+
+
+Scope: block
+----------------------------------------
+Variables:
+              int               y = 7
+Expr:
+              int               7
 ----------------------------------------
 
 

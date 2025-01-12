@@ -3,6 +3,7 @@
     #include <string>
     #include <fstream>
     #include <sstream>
+    #include <cstring>
     #include "tema.tab.h"
     #include "symtable.h" 
 
@@ -12,6 +13,7 @@
     extern int yylineno;
     extern FILE* yyin;
     std::vector<SymTable*> scope;
+    std::vector<expr*> expr_type;
 
     std::string format_number(double num) {
         if (num == (int)num) {
@@ -35,7 +37,7 @@
 %union {
     int int_nr;   
     float float_nr;
-    double num;   
+    std::string *num;   
     std::string *name;    
     int dim;       
     int rows, cols; 
@@ -213,8 +215,8 @@ variable_declaration:
         currentScope->addVariable(*$$, *$2, {});
         delete $1; delete $2; }
     | type IDENTIFIER ASSIGN expression SEMICOLON { 
-        currentScope->addVariable(*$1, *$2, format_number($4));
-        $$ = new std::string("Declaration: " + *$1 + " " + *$2 + " = " + format_number($4) + ";"); delete $1; delete $2; }
+        currentScope->addVariable(*$1, *$2, *$4);
+        $$ = new std::string("Declaration: " + *$1 + " " + *$2 + " = " + *$4 + ";"); delete $1; delete $2; delete $4; }
     | type IDENTIFIER ASSIGN STRING_LITERAL SEMICOLON { 
         currentScope->addVariable(*$1, *$2, *$4);
         $$ = new std::string("Declaration: " + *$1 + " " + *$2 + " = " + *$4 + ";"); delete $1; delete $2; delete $4;}
@@ -266,6 +268,7 @@ statement:
         $$ = new std::string("while (" + std::string($2 ? "true" : "false") + ") {\n" + *$5 + "\n}"); delete $5; }
     | FOR IDENTIFIER ASSIGN expression SEMICOLON boolean SEMICOLON IDENTIFIER ASSIGN expression block_scope statements STOP {
         // Verificăm dacă primul identificator (cel inițializat) este declarat.
+        currentScope = currentScope->getParent();  
         if (!currentScope || (!currentScope->findVariable(*$2) && 
                               (!currentScope->getParent() || !currentScope->getParent()->findVariable(*$2)))) {
             std::cerr << "Error: Variable '" << *$2 << "' is not declared.\n";
@@ -280,10 +283,11 @@ statement:
         }
 
         // Generăm șirul rezultat pentru bucla for.
-        $$ = new std::string("for (" + *$2 + " = " + format_number($4) + "; " + std::string($6 ? "true" : "false") + "; " + *$8 + " = " + format_number($10) + ") {\n" + *$12 + "\n}");
+        $$ = new std::string("for " + *$2 + " = " + *$4 + "; ");
         
         // Eliberăm memoria.
-        delete $12;
+        delete $2;
+        delete $4;
     }
 
     | IDENTIFIER ASSIGN expression SEMICOLON {
@@ -295,8 +299,9 @@ statement:
         }
 
         // Dacă variabila există, continuăm cu atribuirea.
-        $$ = new std::string("Assignment: " + *$1 + " = " + format_number($3));
+        $$ = new std::string("Assignment: " + *$1 + " = " + *$3);
         delete $1;  // Curățăm memoria asociată pointerului la string.
+        delete $3;  // Curățăm memoria asociată pointerului la string.
     }
   
     | IDENTIFIER ASSIGN STRING_LITERAL SEMICOLON {
@@ -313,8 +318,9 @@ statement:
     }
 
     | PRINT LPAREN expression RPAREN SEMICOLON { 
-        print($3); 
-        $$ = new std::string("print(" + format_number($3) + ");");
+        print(*$3); 
+        $$ = new std::string("print(" + *$3 + ");");
+        delete $3;
     }    
     | PRINT LPAREN STRING_LITERAL RPAREN SEMICOLON { 
         print(*$3); 
@@ -332,7 +338,8 @@ statement:
     }
     | TYPEOF LPAREN expression RPAREN SEMICOLON {
         print("expression");
-        $$ = new std::string("typeof(" + format_number($3) + ");");
+        $$ = new std::string("typeof(" + *$3 + ");");
+        delete $3;
     }    
     | TYPEOF LPAREN STRING_LITERAL RPAREN SEMICOLON {
         print("string");
@@ -351,7 +358,7 @@ statement:
             std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
             YYABORT;  // Terminăm parsing-ul dacă prima variabilă nu este găsită.
         }
-        $$ = new std::string("Assignment: " + *$3 + " = " + format_number($5)); delete $3; }
+        $$ = new std::string("Assignment: " + *$3 + " = " + *$5); delete $3; delete $5;}
     | IDENTIFIER POINT IDENTIFIER ASSIGN STRING_LITERAL SEMICOLON { 
         if (!currentScope || (!currentScope->findVariable(*$1) && 
                               (!currentScope->getParent() || !currentScope->getParent()->findVariable(*$1)))) {
@@ -389,10 +396,22 @@ type:
     ;
 
 expression:
-    INT_NR_NEG { $$ = (double) $1; }
-    | INT_NR_POZ { $$ = (double) $1; }
-    | FLOAT_NR { $$ = (double) $1; }
-    | CHAR_LITERAL { $$ = (double) $1; }
+    INT_NR_NEG { 
+        $$ = new std::string(std::to_string($1)); 
+        currentScope->addExpr(*$$, "int");
+    }
+    | INT_NR_POZ { 
+        $$ = new std::string(std::to_string($1)); 
+        currentScope->addExpr(*$$, "int");    
+    }
+    | FLOAT_NR { 
+        $$ = new std::string(std::to_string($1)); 
+        currentScope->addExpr(*$$, "float");    
+    }
+    | CHAR_LITERAL { 
+        $$ = new std::string(1, $1); 
+        currentScope->addExpr(*$$, "char");
+    }
     | IDENTIFIER {
         
         if (!currentScope || (!currentScope->findVariable(*$1) && 
@@ -400,7 +419,8 @@ expression:
             std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
             YYABORT;  // Terminăm parsing-ul dacă variabila nu este găsită.
         }
-        $$ = 0;
+        $$ = new std::string(*$1);
+        currentScope->addExpr(*$$, currentScope->getVariableType(*$1));
         delete $1;
     }
     | IDENTIFIER LSQUARE INT_NR_POZ RSQUARE {
@@ -410,7 +430,13 @@ expression:
             std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
             YYABORT;  // Terminăm parsing-ul dacă variabila nu este găsită.
         }
-        $$ = 0;
+        $$ = new std::string(*$1);
+        std::string type = currentScope->getVariableType(*$1);
+        int cnt = 0;
+        while(type[cnt] != '[')
+            cnt++;
+        type.resize(cnt);
+        currentScope->addExpr(*$$, type);
         delete $1;
        
     }
@@ -421,10 +447,14 @@ expression:
             std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
             YYABORT;  // Terminăm parsing-ul dacă variabila nu este găsită.
         }
-        $$ = 0;
+        $$ = new std::string(*$1);
+        std::string type = currentScope->getVariableType(*$1);
+        int cnt = 0;
+        while(type[cnt] != '[')
+            cnt++;
+        type.resize(cnt);
+        currentScope->addExpr(*$$, type);
         delete $1;
-        
-        
     }
     | IDENTIFIER POINT IDENTIFIER {
         // Verificăm dacă ambele variabile sunt declarate
@@ -433,14 +463,119 @@ expression:
             std::cerr << "Error: Variable '" << *$1 << "' is not declared.\n";
             YYABORT;  // Terminăm parsing-ul dacă prima variabilă nu este găsită.
         }
-        $$ = 0;
+        $$ = new std::string(*$1 + "." + *$3);
         delete $1;
-        
+        delete $3;    
     }
-    | expression PLUS expression { $$ = $1 + $3; }
-    | expression MINUS expression { $$ = $1 - $3; }
-    | expression MULT expression { $$ = $1 * $3; }
-    | expression DIV expression { $$ = $1 / $3; }
+    | expression PLUS expression { 
+        std::string& e1 = *$1;
+        std::string& e2 = *$3;
+        if(currentScope->getExprType(e1) != currentScope->getExprType(e2))
+        {
+            std::cerr << "Error: Incompatible types\n";
+            YYABORT;
+        }
+        if (e1[0] < '0' || e1[0] > '9')
+            e1 = currentScope->getVariableValue(e1);
+        if (e2[0] < '0' || e2[0] > '9')
+            e2 = currentScope->getVariableValue(e2);
+        if (e1.find('.') != std::string::npos) {
+            // Este un float/double
+            float num1 = std::stof(e1);
+            float num2 = std::stof(e2);
+            float sum = num1 + num2;
+            $$ = new std::string(std::to_string(sum));
+            currentScope->addExpr(*$$, "float");
+        } else {
+            int num1 = std::stoi(e1);
+            int num2 = std::stoi(e2);
+            int sum = num1 + num2;
+            $$ = new std::string(std::to_string(sum));
+            currentScope->addExpr(*$$, "int");
+        }    
+    }
+    | expression MINUS expression { 
+        std::string& e1 = *$1;
+        std::string& e2 = *$3;
+        if(currentScope->getExprType(e1) != currentScope->getExprType(e2))
+        {
+            std::cerr << "Error: Incompatible types\n";
+            YYABORT;
+        }
+        if (e1[0] < '0' || e1[0] > '9')
+            e1 = currentScope->getVariableValue(e1);
+        if (e2[0] < '0' || e2[0] > '9')
+            e2 = currentScope->getVariableValue(e2);
+        if (e1.find('.') != std::string::npos) {
+            // Este un float/double
+            float num1 = std::stof(e1);
+            float num2 = std::stof(e2);
+            float sum = num1 - num2;
+            $$ = new std::string(std::to_string(sum));
+            currentScope->addExpr(*$$, "float");
+        } else {
+            int num1 = std::stoi(e1);
+            int num2 = std::stoi(e2);
+            int sum = num1 - num2;
+            $$ = new std::string(std::to_string(sum));
+            currentScope->addExpr(*$$, "int");
+        }        
+    }
+    | expression MULT expression { 
+        std::string& e1 = *$1;
+        std::string& e2 = *$3;
+        if(currentScope->getExprType(e1) != currentScope->getExprType(e2))
+        {
+            std::cerr << "Error: Incompatible types\n";
+            YYABORT;
+        }
+        if (e1[0] < '0' || e1[0] > '9')
+            e1 = currentScope->getVariableValue(e1);
+        if (e2[0] < '0' || e2[0] > '9')
+            e2 = currentScope->getVariableValue(e2);
+        if (e1.find('.') != std::string::npos) {
+            // Este un float/double
+            float num1 = std::stof(e1);
+            float num2 = std::stof(e2);
+            float sum = num1 * num2;
+            $$ = new std::string(std::to_string(sum));
+            currentScope->addExpr(*$$, "float");
+        } else {
+            int num1 = std::stoi(e1);
+            int num2 = std::stoi(e2);
+            int sum = num1 * num2;
+            $$ = new std::string(std::to_string(sum));
+            currentScope->addExpr(*$$, "int");
+        }        
+    }
+    | expression DIV expression {
+        std::string& e1 = *$1;
+        std::string& e2 = *$3;
+        if(currentScope->getExprType(e1) != currentScope->getExprType(e2))
+        {
+            std::cerr << "Error: Incompatible types\n";
+            YYABORT;
+        }
+        if (e1[0] < '0' || e1[0] > '9')
+            e1 = currentScope->getVariableValue(e1);
+        if (e2[0] < '0' || e2[0] > '9')
+            e2 = currentScope->getVariableValue(e2);
+
+        if (e1.find('.') != std::string::npos) {
+            // Este un float/double
+            float num1 = std::stof(e1);
+            float num2 = std::stof(e2);
+            float sum = num1 / num2;
+            $$ = new std::string(std::to_string(sum));
+            currentScope->addExpr(*$$, "float");
+        } else {
+            int num1 = std::stoi(e1);
+            int num2 = std::stoi(e2);
+            int sum = num1 / num2;
+            $$ = new std::string(std::to_string(sum));
+            currentScope->addExpr(*$$, "int");
+        }        
+    }
     ;
 
 boolean:   
@@ -472,7 +607,6 @@ int main(int argc, char** argv)
     yyparse();
     std::ofstream outFile("symtable.txt");
     for(const auto& current : scope)
-        if(current->getScopeName() != "block")
             current->print(outFile);
     outFile.close();
     return 0;
